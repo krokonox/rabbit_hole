@@ -4,6 +4,7 @@ extern crate chrono;
 extern crate clap;
 extern crate rprompt;
 extern crate std;
+extern crate colored;
 
 use chrono::{Date, Local, NaiveDate};
 use clap::{App, Arg};
@@ -14,6 +15,7 @@ use std::fs::{self, File};
 use serde::de::DeserializeOwned;
 use std::error::Error;
 use std::io::BufReader;
+use colored::*;
 
 struct HabitClt {
     habit_list: Vec<Habit>,
@@ -78,7 +80,7 @@ fn main() {
 
         if command == "list" {
             for entry in &habit_clt.entries {
-                println!("{}: {}, {}", entry.habit.name, entry.date, entry.value);
+                println!("{}: {}, {}", entry.habit.name, entry.date, entry.value.yellow());
             }
         }
 
