@@ -1,0 +1,14 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "install",
+            "type": "shell",
+            "command": "cargo make install",
+            "problemMatcher": [],
+            "runOptions": {
+                "runOnSave": true
+            }
+        }
+    ]
+}

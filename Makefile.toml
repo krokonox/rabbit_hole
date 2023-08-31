@@ -1,0 +1,6 @@
+[tasks.install]
+description = "Build and install the Rabbit_hole CLI tool"
+workspace = false
+dependencies = ["build-release"]
+command = "sh"
+args = ["-c", "cp target/release/rabbit_hole /usr/local/bin  && chmod +x /usr/local/bin/rabbit_hole"]
