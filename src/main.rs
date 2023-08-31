@@ -25,7 +25,6 @@ struct HabitClt {
 #[derive(Serialize, Deserialize, Clone)]
 struct Habit {
     name: String,
-    quantity: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -34,6 +33,7 @@ struct Entry {
     #[serde(serialize_with = "serialize_date")]
     #[serde(deserialize_with = "deserialize_date")]
     date: NaiveDate,
+    value: String,
 }
 
 fn serialize_date<S>(date: &NaiveDate, serializer: S) -> Result<S::Ok, S::Error>
@@ -72,13 +72,13 @@ fn main() {
 
         if command == "habits" {
             for habit in &habit_clt.habit_list {
-                println!("{}: {}", habit.name, habit.quantity);
+                println!("{}", habit.name);
             }
         }
 
         if command == "list" {
             for entry in &habit_clt.entries {
-                println!("{}: {}", entry.habit.name, entry.date);
+                println!("{}: {}, {}", entry.habit.name, entry.date, entry.value);
             }
         }
 
@@ -113,18 +113,10 @@ impl HabitClt {
 
         if !habits_file.is_file() {
             fs::File::create(&habits_file).unwrap();
-            println!(
-                "Created {}. This file will list your currently tracked habits.",
-                habits_file.to_str().unwrap()
-            );
         }
 
         if !entries_file.is_file() {
             fs::File::create(&entries_file).unwrap();
-            println!(
-                "Created {}. This file will list your entries.",
-                entries_file.to_str().unwrap()
-            );
         }
 
         let habit_list: Vec<Habit> = match Self::load_from_file(&habits_file) {
@@ -146,12 +138,9 @@ impl HabitClt {
 
     fn add_habit(&mut self) {
         let habit_name = rprompt::prompt_reply_stdout("Enter habit name: ").unwrap();
-        let habit_quantity = rprompt::prompt_reply_stdout("Enter habit quantity (y/n): ").unwrap();
-        let habit_quantity: bool = habit_quantity == "y";
 
         let habit = Habit {
             name: habit_name,
-            quantity: habit_quantity,
         };
         self.habit_list.push(habit);
 
@@ -165,22 +154,20 @@ impl HabitClt {
 
     fn add_entry(&mut self) {
         let habit_name = rprompt::prompt_reply_stdout("Enter habit name: ").unwrap();
-        let habit_quantity = rprompt::prompt_reply_stdout("Enter habit quantity (y/n): ").unwrap();
-        let habit_quantity: bool = habit_quantity == "y";
+        let habit_value = rprompt::prompt_reply_stdout("Enter habit value").unwrap();
 
         if self.contains_habit(&habit_name) {
             let entry = Entry {
                 habit: Habit {
                     name: habit_name,
-                    quantity: habit_quantity,
                 },
                 date: Local::today().naive_local(),
+                value: habit_value,
             };
             self.entries.push(entry);
         } else {
             let habit = Habit {
                 name: habit_name,
-                quantity: habit_quantity,
             };
             self.habit_list.push(habit);
         }
@@ -194,7 +181,6 @@ impl HabitClt {
     fn load_from_file<T: DeserializeOwned>(file_path: &Path) -> Result<T, Box<dyn Error>> {
         if let Ok(metadata) = fs::metadata(file_path) {
             if metadata.len() == 0 {
-                println!("The file is empty.");
                 return Err(Box::new(std::io::Error::new(
                     std::io::ErrorKind::UnexpectedEof,
                     "The file is empty.",
