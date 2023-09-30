@@ -17,6 +17,8 @@ use std::error::Error;
 use std::io::BufReader;
 use colored::*;
 
+mod utility;
+
 struct HabitClt {
     habit_list: Vec<Habit>,
     entries: Vec<Entry>,
@@ -32,29 +34,11 @@ struct Habit {
 #[derive(Serialize, Deserialize, Clone)]
 struct Entry {
     habit: Habit,
-    #[serde(serialize_with = "serialize_date")]
-    #[serde(deserialize_with = "deserialize_date")]
+    #[serde(serialize_with = "utility::helper_functions::serialize_date")]
+    #[serde(deserialize_with = "utility::helper_functions::deserialize_date")]
     date: NaiveDate,
     value: String,
-}
-
-fn serialize_date<S>(date: &NaiveDate, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    let date_str = date.format("%Y-%m-%d").to_string();
-    serializer.serialize_str(&date_str)
-}
-
-fn deserialize_date<'de, D>(deserializer: D) -> Result<NaiveDate, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let date_str: String = Deserialize::deserialize(deserializer)?;
-    let date =
-        NaiveDate::parse_from_str(&date_str, "%Y-%m-%d").map_err(serde::de::Error::custom)?;
-    Ok(date)
-}
+} 
 
 fn main() {
     let matches = App::new("My Program")
@@ -73,8 +57,9 @@ fn main() {
         }
 
         if command == "habits" {
-            for habit in &habit_clt.habit_list {
-                println!("{}", habit.name);
+            for (i, habit) in habit_clt.habit_list.iter().enumerate() {
+                let color = utility::helper_functions::get_random_color();
+                println!("{}. {}", i + 1, habit.name.color(color));
             }
         }
 
@@ -174,6 +159,8 @@ impl HabitClt {
             self.habit_list.push(habit);
         }
     }
+
+    // ************** File operations **************
 
     fn save_to_file<T: Serialize>(&mut self, data: T, file_path: &Path) {
         let json_data = serde_json::to_string(&data).unwrap();

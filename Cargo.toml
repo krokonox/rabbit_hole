@@ -17,3 +17,4 @@ libmath = "0.2.1"
 serde_json = "1.0"
 colored = "2.0.4"
 serde = { version = "1.0.183", features = ["derive"] }
+rand = "0.8.4"
