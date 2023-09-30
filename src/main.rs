@@ -46,44 +46,59 @@ fn main() {
         .get_matches();
 
     let mut habit_clt = HabitClt::new();
-
+    
     if let Some(command) = matches.values_of("command") {
-        let command = command.collect::<Vec<_>>().join(" ");
-        if command == "new" {
-            habit_clt.add_habit();
-            let habit_list = habit_clt.habit_list.clone();
-            let habits_file = habit_clt.habits_file.clone();
-            habit_clt.save_to_file(habit_list, &habits_file);
-        }
+        let words: Vec<_> = command.collect();
+        if let Some(first_word) = words.first() {
 
-        if command == "habits" {
-            for (i, habit) in habit_clt.habit_list.iter().enumerate() {
-                let color = utility::helper_functions::get_random_color();
-                println!("{}. {}", i + 1, habit.name.color(color));
+            if *first_word == "new" {
+                let habit_name = words[1..].join(" ");
+                habit_clt.add_habit(habit_name);
+                let habit_list = habit_clt.habit_list.clone();
+                let habits_file = habit_clt.habits_file.clone();
+                habit_clt.save_to_file(habit_list, &habits_file);
+            } 
+            
+            else if *first_word == "habits" {
+                for (i, habit) in habit_clt.habit_list.iter().enumerate() {
+                    let color = utility::helper_functions::get_random_color();
+                    println!("{}. {}", i + 1, habit.name.color(color));
+                }
+            } 
+
+            else if *first_word == "list" {
+                for entry in &habit_clt.entries {
+                    println!("{}: {}, {}", entry.habit.name, entry.date, entry.value.yellow());
+                }
+            } 
+            
+            else if *first_word == "log" {
+                habit_clt.add_entry();
+                let entries = habit_clt.entries.clone();
+                let entries_file = habit_clt.entries_file.clone();
+                habit_clt.save_to_file(entries, &entries_file);
+                for entry in &habit_clt.entries {
+                    println!("{}: {}", entry.habit.name, entry.date);
+                }
             }
-        }
 
-        if command == "list" {
-            for entry in &habit_clt.entries {
-                println!("{}: {}, {}", entry.habit.name, entry.date, entry.value.yellow());
+            else if *first_word == "delete" {
+                let habit_name = words[1..].join(" ");
+                habit_clt.delete_habit(&habit_name);
+                let habit_list = habit_clt.habit_list.clone();
+                let habits_file = habit_clt.habits_file.clone();
+                habit_clt.save_to_file(habit_list, &habits_file);
+                let entries = habit_clt.entries.clone();
+                let entries_file = habit_clt.entries_file.clone();
+                habit_clt.save_to_file(entries, &entries_file);
+            } 
+            
+            else if *first_word == "delete all" {
+                habit_clt.habit_list.clear();
+                let habit_list = habit_clt.habit_list.clone();
+                let habits_file = habit_clt.habits_file.clone();
+                habit_clt.save_to_file(habit_list, &habits_file);
             }
-        }
-
-        if command == "log" {
-            habit_clt.add_entry();
-            let entries = habit_clt.entries.clone();
-            let entries_file = habit_clt.entries_file.clone();
-            habit_clt.save_to_file(entries, &entries_file);
-            for entry in &habit_clt.entries {
-                println!("{}: {}", entry.habit.name, entry.date);
-            }
-        }
-
-        if command == "delete all" {
-            habit_clt.habit_list.clear();
-            let habit_list = habit_clt.habit_list.clone();
-            let habits_file = habit_clt.habits_file.clone();
-            habit_clt.save_to_file(habit_list, &habits_file);
         }
     }
 }
@@ -123,25 +138,21 @@ impl HabitClt {
         }
     }
 
-    fn add_habit(&mut self) {
-        let habit_name = rprompt::prompt_reply_stdout("Enter habit name: ").unwrap();
-
+    fn add_habit(&mut self, habit_name: String) {
+        if self.habit_list.iter().any(|habit| habit.name == habit_name) {
+            println!("Habit already in the list!");
+            return;
+        }
+    
         let habit = Habit {
             name: habit_name,
         };
         self.habit_list.push(habit);
-
-        let should_add_more = rprompt::prompt_reply_stdout("Add another habit? (y/n): ").unwrap();
-        let should_add_more: bool = should_add_more == "y";
-
-        if should_add_more {
-            self.add_habit();
-        }
-    }
-
+    }    
+    
     fn add_entry(&mut self) {
         let habit_name = rprompt::prompt_reply_stdout("Enter habit name: ").unwrap();
-        let habit_value = rprompt::prompt_reply_stdout("Enter habit value").unwrap();
+        let habit_value = rprompt::prompt_reply_stdout("Enter habit value: ").unwrap();
 
         if self.contains_habit(&habit_name) {
             let entry = Entry {
@@ -159,7 +170,12 @@ impl HabitClt {
             self.habit_list.push(habit);
         }
     }
-
+    
+    fn delete_habit(&mut self, habit_name: &str) {
+        self.habit_list.retain(|habit| habit.name != habit_name);    
+        self.entries.retain(|entry| entry.habit.name != habit_name);
+    }
+    
     // ************** File operations **************
 
     fn save_to_file<T: Serialize>(&mut self, data: T, file_path: &Path) {
