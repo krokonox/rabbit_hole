@@ -2,9 +2,9 @@ use std::path::{Path, PathBuf};
 
 extern crate chrono;
 extern crate clap;
+extern crate colored;
 extern crate rprompt;
 extern crate std;
-extern crate colored;
 
 use chrono::{Date, Local, NaiveDate};
 use clap::{App, Arg};
@@ -12,10 +12,10 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json;
 use std::fs::{self, File};
 
+use colored::*;
 use serde::de::DeserializeOwned;
 use std::error::Error;
 use std::io::BufReader;
-use colored::*;
 
 mod utility;
 
@@ -38,7 +38,7 @@ struct Entry {
     #[serde(deserialize_with = "utility::helper_functions::deserialize_date")]
     date: NaiveDate,
     value: String,
-} 
+}
 
 fn main() {
     let matches = App::new("My Program")
@@ -84,7 +84,12 @@ fn process_habits_command(habit_clt: &mut HabitClt) {
 
 fn process_list_command(habit_clt: &mut HabitClt) {
     for entry in &habit_clt.entries {
-        println!("{}: {}, {}", entry.habit.name, entry.date, entry.value.yellow());
+        println!(
+            "{}: {}, {}",
+            entry.habit.name,
+            entry.date,
+            entry.value.yellow()
+        );
     }
 }
 
@@ -115,9 +120,10 @@ fn process_delete_all_command(habit_clt: &mut HabitClt) {
 
 impl HabitClt {
     fn new() -> HabitClt {
-        let entries_dir = Path::new("entries");
+        let home_dir = dirs::home_dir().unwrap();
+        let entries_dir = home_dir.join("habit_clt/entries");
         if !entries_dir.is_dir() {
-            fs::create_dir(entries_dir).unwrap();
+            fs::create_dir_all(&entries_dir).unwrap();
         }
 
         let mut entries_file = entries_dir.join("entries.json");
@@ -146,14 +152,17 @@ impl HabitClt {
             entries_file,
             habits_file,
         }
-    } 
-    
+    }
+
     fn add_entry(&mut self) {
         let habit_name = rprompt::prompt_reply_stdout("Enter habit name: ").unwrap();
         let habit_value = rprompt::prompt_reply_stdout("Enter habit value: ").unwrap();
-    
+
         if !self.contains_habit(&habit_name) {
-            let add_habit = rprompt::prompt_reply_stdout("Habit not found. Do you want to add a new one? (yes/no): ").unwrap();
+            let add_habit = rprompt::prompt_reply_stdout(
+                "Habit not found. Do you want to add a new one? (yes/no): ",
+            )
+            .unwrap();
             if add_habit.to_lowercase() == "yes" {
                 self.add_habit(habit_name.clone());
                 let habit_list = self.habit_list.clone();
@@ -163,32 +172,28 @@ impl HabitClt {
         }
 
         let entry = Entry {
-            habit: Habit {
-                name: habit_name,
-            },
+            habit: Habit { name: habit_name },
             date: Local::today().naive_local(),
             value: habit_value,
         };
         self.entries.push(entry);
     }
-    
+
     fn add_habit(&mut self, habit_name: String) {
         if self.habit_list.iter().any(|habit| habit.name == habit_name) {
             println!("Habit already in the list!");
             return;
         }
-    
-        let habit = Habit {
-            name: habit_name,
-        };
+
+        let habit = Habit { name: habit_name };
         self.habit_list.push(habit);
-    }       
-    
+    }
+
     fn delete_habit(&mut self, habit_name: &str) {
-        self.habit_list.retain(|habit| habit.name != habit_name);    
+        self.habit_list.retain(|habit| habit.name != habit_name);
         self.entries.retain(|entry| entry.habit.name != habit_name);
     }
-    
+
     // ************** File operations **************
 
     fn save_to_file<T: Serialize>(&mut self, data: T, file_path: &Path) {
